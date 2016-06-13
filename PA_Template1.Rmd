@@ -12,10 +12,73 @@ When you click the **Knit** button a document will be generated that includes bo
 ```{r,echo=FALSE}
 
 ## Loading and preprocessing the data
+activity <- read.csv("activity.csv", colClasses = c("numeric", "character", "numeric"))
+head(activity)
+names(activity)
+library(lattice)
+activity$date <- as.Date(activity$date, "%Y-%m-%d")
+
 ## What is mean total number of steps taken per day?
+TotalNumSteps <- aggregate(steps ~ date, data = activity, sum, na.rm = TRUE)
+
+hist(TotalNumSteps$steps, main = "Total number of steps by day", xlab = "day", col = "green")
+mean(TotalNumSteps$steps)
+median(TotalNumSteps$steps)
+
 ## What is the average daily activity pattern?
+time_series <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(row.names(time_series), time_series, type = "l", xlab = "5 Mins interval", ylab = "Average across all days", main = "Average number of steps taken", col = "red")
+
 ## Imputing missing values
+max_interval  <- which.max(time_series)
+names(max_interval)
+activity_MissingData <- sum(is.na(activity))
+activity_MissingData  #2304 missing values
+##strategy to update missing data values
+# Replace NA with mean values of 5 min interval
+##
+AvgSteps <- aggregate(steps ~ interval, data = activity, FUN = mean)
+fillNA <- numeric()
+for (i in 1:nrow(activity)) {
+  obs <- activity[i, ]
+  if (is.na(obs$steps)) {
+    steps <- subset(AvgSteps, interval == obs$interval)$steps
+  } else {
+    steps <- obs$steps
+  }
+  fillNA <- c(fillNA, steps)
+}
+activity_new <- activity
+activity_new$steps <- fillNA
+
+#Updated histogram with filled NA values
+TotalNumSteps_new <- aggregate(steps ~ date, data = activity_new, sum, na.rm = TRUE)
+hist(TotalNumSteps_new$steps, main = "Total steps by day - NEW", xlab = "Day", col = "green")
+# Mean and Median for the new dataset
+mean(TotalNumSteps_new$steps)
+median(TotalNumSteps_new$steps)
+
 ## Are there differences in activity patterns between weekdays and weekends?
+day <- weekdays(activity$date)
+dayofweek <- vector()
+for (i in 1:nrow(activity)) {
+  if (day[i] == "Saturday") {
+    dayofweek[i] <- "Weekend"
+  } else if (day[i] == "Sunday") {
+    dayofweek[i] <- "Weekend"
+  } else {
+    dayofweek[i] <- "Weekday"
+  }
+}
+activity$dayofweek <- dayofweek
+activity$dayofweek <- factor(activity$dayofweek)
+
+stepsByDay <- aggregate(activity$steps ~ activity$interval + activity$dayofweek, data = activity, mean)
+names(stepsByDay) <- c("interval", "dayofweek", "steps")
+# Plot Time Series
+library(lattice)
+xyplot(steps ~ interval | dayofweek, stepsByDay, type = "l", layout = c(1, 2), main = "Time Series Plot for 5 min interval and Avg number of steps taken - Week/Weekend days", xlab = "Interval", ylab = "Number of steps")
+
 ```
 
  
